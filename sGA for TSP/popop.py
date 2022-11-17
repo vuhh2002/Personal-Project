@@ -86,4 +86,3 @@ class POPOP():
             print(self.best_ind)
 
         return self.best_ind
-
