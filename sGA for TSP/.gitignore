@@ -1,0 +1,5 @@
+
+# For vscode
+.ipynb_checkpoints
+__pycache__
+.vscode
