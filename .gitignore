@@ -3,3 +3,16 @@
 .ipynb_checkpoints
 __pycache__
 .vscode
+
+# For LaTex
+/my_latex/**/*.aux
+/my_latex/**/*.fdb_latexmk
+/my_latex/**/*.fls
+/my_latex/**/*.log
+/my_latex/**/*.nav
+/my_latex/**/*.out
+/my_latex/**/*.snm
+/my_latex/**/*.synctex.gz
+/my_latex/**/*.toc
+
+/private_git
