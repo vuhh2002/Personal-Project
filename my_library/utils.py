@@ -185,3 +185,37 @@ def show_gif(fname):
   with open(fname, 'rb') as fd:
     b64 = base64.b64encode(fd.read()).decode('ascii')
   return display.HTML(f'<img src="data:image/gif;base64,{b64}" />')
+
+def search_all_module_names(root_dir='my_library'):
+    from collections import deque
+    from os import scandir
+
+    res = [root_dir]
+    dirs = deque([root_dir])
+    
+    while len(dirs) > 0:
+        dir = dirs.popleft()
+        for f in scandir(dir):
+            if f.name.startswith('__') or f.name.startswith('.'):
+                continue
+            if f.is_dir():
+                dirs.append(f.path)
+
+            split_by = '\\'
+            if split_by not in f.path:
+              split_by = '/'
+            res.append('.'.join(f.path.split(split_by)))
+            # Remove '.py'
+            if not f.is_dir():
+                res[-1] = res[-1][:-3]
+
+    return res
+
+def reload_all_modules(root_dir='my_library'):
+  from importlib import reload, import_module
+  from sys import modules
+
+  for module_name in search_all_module_names(root_dir):
+    import_module(module_name)
+    reload(modules[module_name])
+
