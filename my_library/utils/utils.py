@@ -186,6 +186,7 @@ def show_gif(fname):
     b64 = base64.b64encode(fd.read()).decode('ascii')
   return display.HTML(f'<img src="data:image/gif;base64,{b64}" />')
 
+
 def search_all_module_names(root_dir='my_library'):
     from collections import deque
     from os import scandir
@@ -211,6 +212,7 @@ def search_all_module_names(root_dir='my_library'):
 
     return res
 
+
 def reload_all_modules(root_dir='my_library'):
   from importlib import reload, import_module
   from sys import modules
@@ -219,3 +221,41 @@ def reload_all_modules(root_dir='my_library'):
     import_module(module_name)
     reload(modules[module_name])
 
+
+def normal_distribution(size, mu, cov):
+  import numpy as np
+
+  mu = np.array(mu)
+  cov = np.array(cov)
+  epsilon = np.random.randn(size, mu.shape)
+  samples = mu + epsilon * np.sqrt(cov)
+  
+  return samples
+
+class CallCountWrapper():
+  def __init__(self, function):
+    self.function = function
+    self.num_calls = 0
+  def __call__(self, *args, **kwargs):
+    self.num_calls += 1
+    self.function(*args, **kwargs)
+
+
+def tuple_all_sublist(a_list):
+  res = None
+  try:
+    a_list = list(a_list)
+    res = tuple(tuple_all_sublist(sublist) for sublist in a_list)
+  except:
+    res = a_list
+
+  return res
+
+
+def build_gif(img_paths, output_path):
+  import imageio
+
+  with imageio.get_writer(output_path, mode='I') as writer:
+    for img_path in img_paths:
+        image = imageio.imread(img_path)
+        writer.append_data(image)

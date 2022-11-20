@@ -1,4 +1,4 @@
-from my_library.algo.ea.popop import POPOP
+from my_library.algorithms.ea.popop import POPOP
 
 import numpy as np
 

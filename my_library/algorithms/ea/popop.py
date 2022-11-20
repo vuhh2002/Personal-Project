@@ -1,18 +1,18 @@
+from my_library.utils import CallCountWrapper
+
 import numpy as np
 
 
 class POPOP():
     def __init__(self, variation_function, evaluation_function, pool_over_pop_size=2, selection_pressure=2, verbose=0):
         self.variate = variation_function
-        self.evaluation_function = evaluation_function
+        self.evaluate = CallCountWrapper(evaluation_function)
         self.pool_over_pop_size = pool_over_pop_size
         self.selection_pressure = selection_pressure
         self.verbose = verbose
-        self.n_eval_call = 0
 
-    def evaluate(self, ind):
-        self.n_eval_call += 1
-        return self.evaluation_function(ind)
+    def num_eval_cals(self):
+        return self.evaluate.num_calls
 
     def tournament_selection(self, pool, pool_fitness):
         pool_size = pool.shape[0]
@@ -32,19 +32,12 @@ class POPOP():
                 new_pop.append(pool[winner_idx])
                 new_pop_fitness.append(pool_fitness[winner_idx])
 
-                # print(pool[group_idx])
-                # print(group_fitness)
-
         new_pop = np.array(new_pop)
         new_pop_fitness = np.array(new_pop_fitness)
-        # print()
-        # print(new_pop)
-        # print(new_pop_fitness)
-        # print('####################')
 
         return new_pop, new_pop_fitness
 
-    def __call__(self, population, num_generations=float('+inf')):
+    def __call__(self, population, max_generation=float('+inf'), max_eval_cals=float('+inf')):
         pop = population
         pop_fitness = np.array([self.evaluate(ind) for ind in pop])
         if self.verbose:
@@ -54,23 +47,21 @@ class POPOP():
             print(pop_fitness)
 
         generation = 0
-        while generation < num_generations:
+        while generation < max_generation:
             offspring = self.variate(pop, self.pool_over_pop_size)
+
+            if self.num_eval_cals() + len(offspring) > max_eval_cals:
+                break
             offspring_fitness = np.array([self.evaluate(ind) for ind in offspring])
+
             pool = np.vstack((pop, offspring))
             pool_fitness = np.hstack((pop_fitness, offspring_fitness))
             pop, pop_fitness = self.tournament_selection(pool, pool_fitness)
-            # print()
-            # print(pool)
-            # print(pop)
-            # print(pool_fitness)
-            # print(pop_fitness)
-            # print("#############")
 
-            generation += 1
             if self.verbose:
                 print(f"#Gen {generation}:")
                 print(pop_fitness)
+            generation += 1
 
             if np.all(pop == pop[0]):
                 if self.verbose:
