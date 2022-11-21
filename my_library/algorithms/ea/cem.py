@@ -1,7 +1,6 @@
 from my_library.utils import (
     normal_distribution,
     CallCountWrapper,
-    tuple_all_sublist,
 )
 
 import numpy as np
@@ -11,66 +10,74 @@ class CEM:
     def __init__(
         self,
         num_params,
-        mu_init = None,
-        cov_init = 1e-3,
-        epsilon = 1e-3,
-        epsilon_limit = 1e-5,
-        decay = 0.95,
+        bounds = [float('-inf'), float('+inf')],
+        range_init = [-1, 1],
+        elitism = True,
         ):
 
         self.num_params = num_params
-        if mu_init != None:
-            self.mu = np.array(mu_init)
-        else:
-            self.mu = np.zeros(self.num_params)
-        self.cov = np.array(cov_init)
-        if len(self.cov) == 1:
-            self.cov = cov_init * np.ones(self.num_params)
 
-        self.epsilon = epsilon
-        self.epsilon_limit = epsilon_limit
-        self.decay = decay
+        bounds = np.array(bounds)
+        if bounds.shape == (2,):
+            bounds = np.ones((num_params, 2)) * bounds
+        self.lower_bound = bounds[:, 0]
+        self.upper_bound = bounds[:, 1]
 
+        range_init = np.array(range_init)
+        if range_init.shape == (2,):
+            range_init = np.ones((num_params, 2)) * range_init
+        lower_range_init = range_init[:, 0]
+        upper_range_init = range_init[:, 1]
+        diff = upper_range_init - lower_range_init
+        self.mu = lower_range_init + diff / 2
+        self.cov = (diff / 2) ** 2
+
+        self.elitism = elitism
         self.best_ind = None
-        self.best_fitness = None
+        self.best_loss = None
         self.num_parents = None
         self.weights = None
+
+        self.c_1 = 2 / num_params**2
+        self.c_c = 4 / num_params
+        self.p_c = np.zeros(num_params)
 
     def ask(self, pop_size):
         """
         Returns a list of candidates parameters
         """
-        
+
         pop = normal_distribution(pop_size, self.mu, self.cov)
+        pop = np.clip(pop, self.lower_bound, self.upper_bound)
+
         return pop
 
-    def tell(self, population, fitness, num_parents=None, elitism=True):
+    def tell(self, pop, loss, num_parents=None):
         """
         Updates the distribution
         """
 
         if num_parents == None:
-            num_parents = len(population) / 2
+            num_parents = len(pop) // 2
         if self.num_parents != num_parents:
             self.num_parents = num_parents
-            self.weights = np.array([np.log((num_parents + 1) / i)
-                                    for i in range(1, num_parents + 1)])
+            self.weights = np.array([np.log((self.num_parents + 1) / i)
+                            for i in range(1, self.num_parents + 1)])
             self.weights /= self.weights.sum()
+            self.parents_eff = 1 / (self.weights ** 2).sum()
             
-        if self.best_ind != None and elitism:
-            population = np.hstack((self.best_ind, population))
-            fitness = np.hstack((self.best_fitness, fitness))
-        fitness = np.array(fitness)
-        idx_sorted = np.argsort(- fitness)
-        self.best_ind = population[idx_sorted[0]]
-        self.best_fitness = fitness[idx_sorted[0]]
+        if self.best_ind is not None and self.elitism:
+            pop = np.vstack((self.best_ind, pop))
+            loss = np.hstack((self.best_loss, loss))
+        loss = np.array(loss)
+        idx_sorted = np.argsort(loss)
+        self.best_ind = pop[idx_sorted[0]]
+        self.best_loss = loss[idx_sorted[0]]
 
-        old_mu = self.mu
-        self.epsilon = self.epsilon * self.decay + (1 - self.decay) * self.epsilon_limit
-
-        self.mu = self.weights @ population[idx_sorted[:self.num_parents]]
-        diff = population[idx_sorted[:self.num_parents]] - old_mu
-        self.cov = self.weights @ (diff**2) + self.epsilon * np.ones(self.num_params)
+        prev_mu = self.mu
+        self.mu = self.weights @ pop[idx_sorted[:self.num_parents]]
+        self.p_c = (1 - self.c_c) * self.p_c + np.sqrt(self.c_c * (2 - self.c_c) * self.parents_eff) * (self.mu - prev_mu)
+        self.cov = (1 - self.c_1) * self.cov + self.c_1 * self.p_c * self.p_c.T
 
 
 def solve(
@@ -78,49 +85,42 @@ def solve(
     num_params,
     pop_size,
     max_eval_cals,
+    bounds = [float('-inf'), float('+inf')],
+    range_init = [-1, 1],
     max_generation = float('+inf'),
     num_parents = None,
     elitism = True,
-    mu_init = None,
-    cov_init = 1e-3,
-    epsilon = 1e-3,
-    epsilon_limit = 1e-5,
-    decay = 0.95,
     log_mode = 0, # 0, 1, 2 or 3
     verbose = False,
     ):
 
     fobj = CallCountWrapper(fobj)
     cem = CEM(
-        num_params,
-        mu_init,
-        cov_init,
-        epsilon,
-        epsilon_limit,
-        decay,
+        num_params=num_params,
+        bounds=bounds,
+        range_init=range_init,
+        elitism=elitism,
     )
-
     results = []
     all_pops = []
     generation = 0
+
     while generation < max_generation and fobj.num_calls + pop_size <= max_eval_cals:
-        pop = cem.ask(pop_size)
-        fitness = [fobj(ind) for ind in pop]
-        cem.tell(pop, fitness, num_parents, elitism)
+        pop = cem.ask(pop_size=pop_size)
+        loss = [fobj(ind) for ind in pop]
+        cem.tell(pop=pop, loss=loss, num_parents=num_parents)
 
         if log_mode == 1 or log_mode == 3:
-            row = (generation, fobj.num_calls, cem.best_ind, cem.best_fitness)
+            row = (cem.best_ind, cem.best_loss, generation, fobj.num_calls)
             results.append(row)
         if log_mode == 2 or log_mode == 3:
             all_pops.append(pop)
         if verbose:
-            print(f'Generation {generation}, best fitness: {cem.best_fitness}')
+            print(f'Generation {generation}, best loss: {cem.best_loss}')
         generation += 1
 
-    results = tuple_all_sublist(results)
-    all_pops = tuple_all_sublist(all_pops)
     if log_mode == 0:
-        return cem.best_ind, cem.best_fitness
+        return cem.best_ind, cem.best_loss
     if log_mode == 1:
         return results
     if log_mode == 2:

@@ -30,7 +30,7 @@ class Benchmark():
 
         return X, Y, Z
 
-    def show(self, start=float('-inf'), end=float('+inf'), invert_axis=True):
+    def show(self, start=float('-inf'), end=float('+inf'), invert_axis=True, save_path=None):
         X, Y, Z = self.space(start, end)
         plt.figure(figsize=(12,6))
         ax1 = plt.subplot(1,2,1, projection='3d')
@@ -44,11 +44,15 @@ class Benchmark():
         ax1.set_ylabel('y')
 
         ax2 = plt.subplot(1,2,2)
-        contour = ax2.contourf(X,Y,Z, levels=50, cmap='jet', alpha=0.7)
+        contour = ax2.contourf(X, Y, Z, levels=50, cmap='jet', alpha=0.7)
         ax2.set_xlabel('x')
         ax2.set_ylabel('y')
 
-        plt.show()
+        if save_path != None:
+            plt.savefig(save_path)
+            plt.close()
+        else:
+            plt.show()
 
     def __call__(self, x):
         x = np.clip(x, self.lower_bound, self.upper_bound)
