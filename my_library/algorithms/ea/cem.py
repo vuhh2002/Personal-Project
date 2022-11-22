@@ -119,13 +119,8 @@ def solve(
             print(f'Generation {generation}, best loss: {cem.best_loss}')
         generation += 1
 
-    if log_mode == 0:
-        return cem.best_ind, cem.best_loss
-    if log_mode == 1:
-        return results
-    if log_mode == 2:
-        return all_pops
-    if log_mode == 3:
+    if log_mode != 0:
         return results, all_pops
+    return cem.best_ind, cem.best_loss
     
     
