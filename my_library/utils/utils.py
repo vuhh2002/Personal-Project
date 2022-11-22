@@ -255,11 +255,11 @@ def tuple_all_sublist(a_list, dtype=None):
   return res
 
 
-def build_gif(img_paths, save_path, delete_imgs=False):
+def build_gif_from_files(img_paths, gif_path, delete_imgs=False):
   import imageio
   import shutil
 
-  with imageio.get_writer(save_path, mode='I') as writer:
+  with imageio.get_writer(gif_path, mode='I') as writer:
     for img_path in img_paths:
         image = imageio.imread(img_path)
         writer.append_data(image)
@@ -269,32 +269,69 @@ def build_gif(img_paths, save_path, delete_imgs=False):
       shutil.rmtree(img_path)
 
 
+def build_gif_from_numpy(imgs, gif_path, fps=24):
+  import numpy as np
+  from PIL import Image
+
+  imgs = [Image.fromarray(img) for img in imgs]
+  duration = 1000 // fps
+  imgs[0].save(
+    gif_path,
+    save_all=True,
+    append_images=imgs[1:],
+    duration=duration,
+    loop=0,
+    )
+
+
+def figure_to_numpy(fig):
+  import numpy as np
+  import matplotlib.pyplot as plt
+
+  fig.canvas.draw()
+  data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+  data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+
+  return data
+
+
 def make_gif_for_es(
   all_pops,
   space,
-  save_path,
+  gif_path,
   opt_ind=None,
+  minimum_generation=None,
+  fps=6,
   ):
+  import numpy as np
   import matplotlib.pyplot as plt
-  import os
-  import time
-  import shutil
 
-  tmp_path = 'tmp_' + str(time.time())
-  os.makedirs(tmp_path)
-  img_paths = [os.path.join(tmp_path, str(i) + '.png') for i in range(len(all_pops))]
+  if minimum_generation == None:
+    minimum_generation = fps
+
+  if opt_ind is not None:
+    generation = len(all_pops) - 1
+    while generation >= minimum_generation and np.allclose(all_pops[generation], opt_ind):
+      generation -= 1
+    all_pops = all_pops[:generation+1]
+
+  generation = len(all_pops) - 2
+  while generation >= minimum_generation and np.allclose(all_pops[generation], all_pops[generation + 1]):
+    generation -= 1
+  all_pops = all_pops[:generation+1]
+
   X, Y, Z = space
+  imgs = []
 
-  for img_path, pop in zip(img_paths, all_pops):
-      plt.figure(figsize=(6,6))
+  for pop in all_pops:
+      fig = plt.figure(figsize=(6,6))
       plt.contourf(X, Y, Z, levels=50, cmap='viridis', alpha=0.8)
       plt.scatter(pop[:,0], pop[:,1], s=50, c='#FFB7C5')
       if opt_ind is not None:
         plt.scatter(opt_ind[0], opt_ind[1], s=50, c='#Ff0000')
       plt.xlabel('x')
       plt.ylabel('y')
-      plt.savefig(img_path)
+      imgs.append(figure_to_numpy(fig=fig))
       plt.close()
 
-  build_gif(img_paths=img_paths, save_path=save_path)
-  shutil.rmtree(tmp_path)
+  build_gif_from_numpy(imgs=imgs, gif_path=gif_path, fps=fps)

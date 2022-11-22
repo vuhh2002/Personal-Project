@@ -114,7 +114,7 @@ def solve(
             row = (cem.best_ind, cem.best_loss, generation, fobj.num_calls)
             results.append(row)
         if log_mode == 2 or log_mode == 3:
-            all_pops.append(pop)
+            all_pops.append(pop.copy())
         if verbose:
             print(f'Generation {generation}, best loss: {cem.best_loss}')
         generation += 1

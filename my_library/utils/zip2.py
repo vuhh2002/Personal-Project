@@ -8,16 +8,16 @@ class zip2():
 
         self.len = 1
         self.lengths = []
-        self.lst_idx = []
+        self.tuple_lst_idx = []
         for it in args:
             self.lengths.append(len(it))
             self.len *= len(it)
-            self.lst_idx.append(np.arange(len(it), dtype=int))
+            self.tuple_lst_idx.append(np.arange(len(it), dtype=int))
         self.lengths = tuple(self.lengths)
         
-        self.lst_idx = np.array(list(product(*self.lst_idx)), dtype=int)
-        self.iter_lst_idx = self.lst_idx.copy()
-
+        self.tuple_lst_idx = np.array(list(product(*self.tuple_lst_idx)), dtype=int)
+        self.rand_int_idx = np.arange(self.len)
+        np.random.shuffle(self.rand_int_idx)
 
 
     def __len__(self):
@@ -25,9 +25,8 @@ class zip2():
 
     def __iter__(self):
         self.iter_idx = -1
-        
         if self.random_order:
-            np.random.shuffle(self.iter_lst_idx)
+            np.random.shuffle(self.rand_int_idx)
 
         return self
 
@@ -35,8 +34,12 @@ class zip2():
         self.iter_idx += 1
         if self.iter_idx >= self.len:
             raise StopIteration
-
-        return self.get_item_from_int(self.iter_idx, from_iter_lst=True)
+        if self.random_order:
+            idx = self.rand_int_idx[self.iter_idx]
+        else:
+            idx = self.iter_idx
+            
+        return self.get_item_from_int(idx)
 
     def __getitem__(self, key):
         try:
@@ -65,15 +68,11 @@ class zip2():
 
         return res
 
-    def get_item_from_int(self, key, from_iter_lst=False):
+    def get_item_from_int(self, key):
         if not isinstance(key, int):
             raise TypeError('Index must be a integer')
 
-        if from_iter_lst:
-            tuple_idx = tuple(self.iter_lst_idx[key])
-        else:
-            tuple_idx = tuple(self.lst_idx[key])
-            
+        tuple_idx = tuple(self.tuple_lst_idx[key])
         return self.get_item_from_tuple(tuple_idx)
 
     def get_item_from_tuple(self, key):
