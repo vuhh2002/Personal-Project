@@ -1,31 +1,42 @@
+import numpy as np
+from itertools import product
+
 class zip2():
-    def __init__(self, *args):
+    def __init__(self, *args, random_order=False):
         self.args = args
+        self.random_order = random_order
 
         self.len = 1
         self.lengths = []
+        self.lst_idx = []
         for it in args:
             self.lengths.append(len(it))
             self.len *= len(it)
+            self.lst_idx.append(np.arange(len(it), dtype=int))
         self.lengths = tuple(self.lengths)
-        # print(self.lengths)
-        # print(self.len)
+        
+        self.lst_idx = np.array(list(product(*self.lst_idx)), dtype=int)
+        self.iter_lst_idx = self.lst_idx.copy()
+
+
 
     def __len__(self):
         return self.len
 
     def __iter__(self):
-        self.next_idx = 0
+        self.iter_idx = -1
+        
+        if self.random_order:
+            np.random.shuffle(self.iter_lst_idx)
+
         return self
 
     def __next__(self):
-        if self.next_idx >= self.len:
+        self.iter_idx += 1
+        if self.iter_idx >= self.len:
             raise StopIteration
 
-        res = self[self.next_idx]
-        self.next_idx += 1
-        
-        return res
+        return self.get_item_from_int(self.iter_idx, from_iter_lst=True)
 
     def __getitem__(self, key):
         try:
@@ -54,15 +65,16 @@ class zip2():
 
         return res
 
-    def get_item_from_int(self, key):
+    def get_item_from_int(self, key, from_iter_lst=False):
         if not isinstance(key, int):
             raise TypeError('Index must be a integer')
-        idx = [0] * len(self.args)
-        for i in range(len(self.args) - 1, -1, -1):
-            idx[i] = key % self.lengths[i]
-            key = key // self.lengths[i]
 
-        return self.get_item_from_tuple(tuple(idx))
+        if from_iter_lst:
+            tuple_idx = tuple(self.iter_lst_idx[key])
+        else:
+            tuple_idx = tuple(self.lst_idx[key])
+            
+        return self.get_item_from_tuple(tuple_idx)
 
     def get_item_from_tuple(self, key):
         if not isinstance(key, tuple):
