@@ -256,7 +256,7 @@ def tuple_all_sublist(a_list, dtype=None):
 
 def build_gif(img_paths, save_path, delete_imgs=False):
   import imageio
-  import os
+  import shutil
 
   with imageio.get_writer(save_path, mode='I') as writer:
     for img_path in img_paths:
@@ -265,7 +265,7 @@ def build_gif(img_paths, save_path, delete_imgs=False):
 
   if delete_imgs:
     for img_path in img_paths:
-      os.remove(img_path)
+      shutil.rmtree(img_path)
 
 
 def make_gif_for_es(
@@ -277,6 +277,7 @@ def make_gif_for_es(
   import matplotlib.pyplot as plt
   import os
   import time
+  import shutil
 
   tmp_path = 'tmp_' + str(time.time())
   os.makedirs(tmp_path)
@@ -295,4 +296,4 @@ def make_gif_for_es(
       plt.close()
 
   build_gif(img_paths=img_paths, save_path=save_path)
-  os.remove(tmp_path)
+  shutil.rmtree(tmp_path)
