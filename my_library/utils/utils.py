@@ -141,21 +141,21 @@ def line_distribution(lines, num_timesteps):
   return list_x, mean_y, lower_y, upper_y
 
 
-def one_line_plot(monitor_dir, title):
-    """
-    plot the results
-    :param monitor_dir: (str) the save location of the results to plot
-    :param title: (str) the title of the task to plot
-    """
-    
-    import matplotlib.pyplot as plt
+def line_distribution_v2(lines):
+  # lines = [line1, line2, ...]
+  # line = [x, y]
+  # x is already sorted acendingly
 
-    x, y = load_xy(monitor_dir)
-    plt.plot(x, y)
-    plt.xlabel('Timesteps')
-    plt.ylabel('Reward')
-    plt.title(title)
-    plt.show()
+  import numpy as np
+
+  lines = np.array(lines)
+  minimax_x = lines[:,0,-1].min()
+  list_x, mean_y, lower_y, upper_y = line_distribution(lines=lines, num_timesteps=minimax_x)
+  upper_y = np.array(upper_y)
+  lower_y = np.array(lower_y)
+  y_std = (upper_y - lower_y) / 2
+
+  return list_x, mean_y, y_std
 
 
 def record_video(model, env_id, video_dir, play=True, deterministic=True):
@@ -335,3 +335,60 @@ def make_gif_for_es(
       plt.close()
 
   build_gif_from_numpy(imgs=imgs, gif_path=gif_path, fps=fps)
+
+
+def set_random_seed(seed: int) -> None:
+  """
+  Seed the different random generators.
+  :param seed:
+  """
+  
+  import numpy as np
+  import torch as th
+  import random
+
+  # Seed python RNG
+  random.seed(seed)
+  # Seed numpy RNG
+  np.random.seed(seed)
+  # seed the RNG for all devices (both CPU and CUDA)
+  th.manual_seed(seed)
+
+
+def mean_and_std(values):
+  import numpy as np
+
+  n = len(values)
+  mean = np.mean(values)
+  std = np.abs(np.array(values) - mean).sum() / np.sqrt(n)
+
+  return mean, std
+
+
+def lines_plot(lines, labels, title, xlabel, ylabel, xticks=None, alpha=0.5, basex=None, basey=None):
+  import matplotlib.pyplot as plt
+  from matplotlib.ticker import ScalarFormatter
+  import numpy as np
+
+  assert len(lines) == len(labels)
+  fig, ax = plt.subplots()
+
+  for i in range(len(lines)):
+      x, mean_y, y_std = np.array(lines[i])
+      plt.plot(x, mean_y, label=labels[i])
+      plt.fill_between(x, mean_y - y_std, mean_y + y_std, alpha=alpha)
+
+  if basex is not None:
+    plt.xscale('log', basex=basex)
+    ax.xaxis.set_major_formatter(ScalarFormatter())
+  if basey is not None:
+    plt.yscale('log', basey=basey)
+    ax.yaxis.set_major_formatter(ScalarFormatter())
+  if xticks is not None:
+    ax.set_xticks(xticks)
+  plt.grid(True)
+  plt.title(title)
+  plt.xlabel(xlabel)
+  plt.ylabel(ylabel)
+  plt.legend()
+  plt.show()
