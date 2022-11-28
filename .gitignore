@@ -15,6 +15,5 @@ __pycache__
 /my_latex/**/*.synctex.gz
 /my_latex/**/*.toc
 
-/other_git
-/draft
+/other
 tmp*
